@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guess The Song</title>
+  <style>
+    :root {
+      --bg:#070b14; --panel:#121826; --panel2:#0d1320; --text:#f8fbff; --muted:#aebad4;
+      --blue:#4ea1ff; --green:#22c55e; --red:#ef4444; --yellow:#f6c945; --orange:#ff8a1f;
+      --purple:#8b5cf6; --shadow:0 12px 36px rgba(0,0,0,.28);
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; font-family:Arial,Helvetica,sans-serif; color:var(--text); overflow:hidden;
+      background:
+        radial-gradient(circle at top left, rgba(255,138,31,.10), transparent 25%),
+        radial-gradient(circle at top right, rgba(78,161,255,.10), transparent 24%),
+        linear-gradient(180deg,#060913,#0a1120);
+    }
+    .app { height:100vh; padding:14px; display:flex; flex-direction:column; gap:12px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .title h1 { margin:0; color:var(--orange); font-size:34px; line-height:1; text-transform:uppercase; }
+    .title p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+    .header-right { display:flex; align-items:flex-start; gap:10px; }
+    .tiny { font-size:12px; color:var(--muted); margin-top:2px; }
+    .volume-box { background:var(--panel); padding:10px 12px; border-radius:14px; box-shadow:var(--shadow); min-width:200px; }
+    .volume-label { font-size:12px; font-weight:800; text-transform:uppercase; color:var(--blue); margin-bottom:6px; letter-spacing:.8px; }
+    .volume-row { display:flex; gap:8px; align-items:center; }
+    .volume-row input[type="range"] { flex:1; accent-color:var(--orange); }
+    .top { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .card { background:var(--panel); border-radius:16px; padding:12px 14px; box-shadow:var(--shadow); min-height:72px; }
+    .label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+    .blue { color:var(--blue); } .green { color:var(--green); } .red { color:var(--red); } .yellow { color:var(--yellow); }
+    .value { font-size:28px; font-weight:900; line-height:1; }
+    .main { flex:1; min-height:0; display:grid; grid-template-columns:1.55fr .95fr; gap:12px; }
+    .left,.right { background:var(--panel); border-radius:18px; padding:14px; min-height:0; box-shadow:var(--shadow); }
+    .left { display:flex; flex-direction:column; gap:10px; }
+    .section-title { text-align:center; font-size:18px; font-weight:800; }
+    .reveal-area { flex:1; min-height:0; display:grid; grid-template-columns:.95fr 1.05fr; border-radius:16px; overflow:hidden; background:#090d16; }
+    .visual { position:relative; background:#070b12; display:flex; align-items:center; justify-content:center; min-height:0; padding:12px; }
+    .playing, .cover-fallback {
+      position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:18px;
+      background:radial-gradient(circle at center, rgba(255,138,31,.16), transparent 34%), linear-gradient(180deg,#070b12,#0c1320);
+    }
+    .cover-fallback.hidden, .playing.hidden { display:none; }
+    .emoji { font-size:58px; line-height:1; margin-bottom:10px; animation:pulse 1s infinite ease-in-out; }
+    .playing-title { font-size:26px; font-weight:900; color:#ffb56e; text-transform:uppercase; }
+    .playing-sub { margin-top:8px; font-size:14px; color:#d7e5ff; font-weight:700; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    #coverImage { max-width:100%; max-height:100%; object-fit:contain; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.4); display:none; }
+    #coverImage.show { display:block; }
+    .info-pane { background:linear-gradient(180deg,#121826,#0d1320); transform:translateX(100%); opacity:0; transition:transform .35s ease, opacity .35s ease; padding:18px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+    .info-pane.show { transform:translateX(0); opacity:1; }
+    .kicker { color:var(--yellow); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+    .song-title { font-size:30px; font-weight:900; line-height:1.05; }
+    .artist { font-size:21px; color:#dce7ff; font-weight:700; }
+    .countdown { min-height:34px; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:900; color:var(--orange); }
+    .inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    input[type="text"], select { width:100%; height:46px; border:none; border-radius:12px; padding:0 12px; font-size:16px; background:#1a2436; color:#fff; outline:none; }
+    .buttons { display:flex; flex-wrap:wrap; gap:8px; }
+    button { border:none; border-radius:12px; padding:11px 14px; font-size:14px; font-weight:800; color:#fff; cursor:pointer; transition:.15s; }
+    button:hover { transform:translateY(-1px); } button:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+    .btn-green { background:var(--green); } .btn-blue { background:var(--blue); } .btn-orange { background:var(--orange); } .btn-purple { background:var(--purple); } .btn-red { background:var(--red); } .btn-gray { background:#46526a; }
+    .result { min-height:42px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:24px; font-weight:900; }
+    .result.good { color:var(--green); } .result.mid { color:var(--yellow); } .result.bad { color:var(--red); }
+    .manual-box { display:none; background:var(--panel2); border-radius:14px; padding:12px; flex-direction:column; gap:10px; }
+    .manual-box.active { display:flex; }
+    .manual-title { font-size:12px; font-weight:800; color:var(--yellow); text-transform:uppercase; letter-spacing:1px; }
+    .award-grid { display:grid; gap:8px; }
+    .award-row { display:grid; grid-template-columns:1fr auto auto auto; gap:8px; align-items:center; background:#151d2d; border-radius:12px; padding:10px; }
+    .award-name { font-weight:800; }
+    .right { display:flex; flex-direction:column; gap:10px; overflow:auto; }
+    .right h2 { margin:0; font-size:28px; line-height:1; color:var(--orange); }
+    .player-list { display:grid; gap:8px; }
+    .player-card { background:#182235; border-radius:14px; padding:10px; display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; }
+    .player-name { font-size:15px; font-weight:900; margin-bottom:3px; }
+    .player-points { font-size:24px; font-weight:900; }
+    .adjust { display:flex; gap:6px; } .adjust button { min-width:38px; padding:9px 0; }
+    .info-list { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px; color:#e6ecf8; font-size:14px; line-height:1.42; }
+    .status { font-size:14px; color:var(--muted); }
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+    .hidden { display:none !important; }
+    .modal { width:min(760px,100%); background:linear-gradient(180deg,#111827,#0f172a); border-radius:20px; padding:22px; box-shadow:0 25px 80px rgba(0,0,0,.45); }
+    .modal h3 { margin:0 0 12px; color:var(--orange); font-size:30px; text-transform:uppercase; }
+    .modal p { margin:0 0 10px; color:#e7edf9; font-size:15px; line-height:1.45; }
+    .mode-row { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 16px; }
+    .mode-btn { flex:1; min-width:160px; background:#1f2937; border:2px solid transparent; }
+    .mode-btn.active { border-color:var(--orange); background:#182235; }
+    .setup-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:8px 0 14px; }
+    .player-inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .results-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0; }
+    .result-card { background:#182235; border-radius:14px; padding:14px; text-align:center; }
+    .small { font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:800; letter-spacing:1px; margin-bottom:8px; }
+    .big { font-size:28px; font-weight:900; }
+    .winner { margin-top:8px; font-size:20px; font-weight:900; color:var(--yellow); text-align:center; }
+    @media (max-width:1100px) {
+      body { overflow:auto; }
+      .app { height:auto; min-height:100vh; }
+      .top,.main,.inputs,.setup-grid,.player-inputs,.results-grid { grid-template-columns:1fr; }
+      .reveal-area { grid-template-columns:1fr; min-height:480px; }
+      .song-title { font-size:26px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="startOverlay" class="overlay">
+    <div class="modal">
+      <h3>Guess The Song starten</h3>
+      <p>Lege deine MP3s als <b>song1.mp3, song2.mp3, song3.mp3 ...</b> in den Ordner <b>audio</b>.</p>
+      <p>Solo: Song richtig = 2 Punkte, nur Artist richtig = 1 Punkt. Mehrspieler: erst Auflösung, dann 2 / 1 / 0 Punkte vergeben.</p>
+
+      <div class="mode-row">
+        <button id="soloModeBtn" class="mode-btn active" type="button">Solo Modus</button>
+        <button id="multiModeBtn" class="mode-btn" type="button">Mehrspieler</button>
+      </div>
+
+      <div class="setup-grid">
+        <div>
+          <div class="small">Spieleranzahl</div>
+          <select id="playerCountSelect">
+            <option value="1">1 Spieler</option>
+            <option value="2">2 Spieler</option>
+            <option value="3">3 Spieler</option>
+            <option value="4">4 Spieler</option>
+          </select>
+        </div>
+        <div>
+          <div class="small">Clip-Länge</div>
+          <select id="clipLengthSelect">
+            <option value="15">15 Sekunden</option>
+            <option value="12">12 Sekunden</option>
+            <option value="10">10 Sekunden</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="playerInputs" class="player-inputs hidden">
+        <input id="player1Input" type="text" placeholder="Name Spieler 1">
+        <input id="player2Input" type="text" placeholder="Name Spieler 2">
+        <input id="player3Input" type="text" placeholder="Name Spieler 3">
+        <input id="player4Input" type="text" placeholder="Name Spieler 4">
+      </div>
+
+      <div class="modal-actions">
+        <button id="startBtn" class="btn-orange" type="button">Spiel starten</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="endOverlay" class="overlay hidden">
+    <div class="modal">
+      <h3>Ergebnis</h3>
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="small">Songs gespielt</div>
+          <div class="big" id="finalSongsPlayed">0</div>
+        </div>
+        <div class="result-card">
+          <div class="small">Zeit</div>
+          <div class="big" id="finalTime">00:00</div>
+        </div>
+        <div class="result-card">
+          <div class="small" id="finalModeLabel">Punkte</div>
+          <div class="big" id="finalModeValue">0</div>
+        </div>
+      </div>
+      <div id="finalScoreboard" class="player-list"></div>
+      <div id="winnerText" class="winner hidden"></div>
+      <div class="modal-actions">
+        <button class="btn-orange" onclick="location.reload()">Neu starten</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app">
+    <div class="header">
+      <div class="title">
+        <h1>Guess The Song</h1>
+        <p>Lokale Audio-Dateien aus /audio</p>
+      </div>
+      <div class="header-right">
+        <div class="tiny">Made by ryxii</div>
+        <div class="volume-box">
+          <div class="volume-label">Lautstärke</div>
+          <div class="volume-row">
+            <input id="volumeSlider" type="range" min="0" max="100" value="80" step="1">
+            <span id="volumeValue">80%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="top">
+      <div class="card"><div class="label blue">Zeit</div><div id="timeDisplay" class="value">00:00</div></div>
+      <div class="card"><div class="label green">Song</div><div id="countDisplay" class="value">1 / 48</div></div>
+      <div class="card"><div class="label red">Modus</div><div id="modeDisplay" class="value">Solo</div></div>
+      <div class="card"><div class="label yellow">Clip</div><div id="clipDisplay" class="value">15s</div></div>
+    </div>
+
+    <div class="main">
+      <div class="left">
+        <div class="section-title">Auflösung</div>
+
+        <div class="reveal-area">
+          <div class="visual">
+            <div id="playingPlaceholder" class="playing">
+              <div class="emoji">🎶</div>
+              <div class="playing-title">Song is playing</div>
+              <div class="playing-sub">Hör gut zu und rate Song + Artist</div>
+            </div>
+            <div id="coverFallback" class="cover-fallback hidden">
+              <div class="emoji">🖼️</div>
+              <div class="playing-title">Cover fehlt</div>
+              <div class="playing-sub">Songname und Artist stehen rechts</div>
+            </div>
+            <img id="coverImage" alt="Song Cover">
+          </div>
+          <div id="songInfo" class="info-pane">
+            <div class="kicker">Auflösung</div>
+            <div id="songTitleEl" class="song-title">-</div>
+            <div id="songArtistEl" class="artist">-</div>
+          </div>
+        </div>
+
+        <div id="countdown" class="countdown"></div>
+
+        <div id="soloInputs" class="inputs">
+          <input id="songGuessInput" type="text" placeholder="Song Titel...">
+          <input id="artistGuessInput" type="text" placeholder="Artist...">
+        </div>
+
+        <div class="buttons">
+          <button id="primeBtn" class="btn-green" type="button">Audio freischalten</button>
+          <button id="playBtn" class="btn-green" type="button">Play</button>
+          <button id="replayBtn" class="btn-blue" type="button">Erneut abspielen</button>
+          <button id="revealBtn" class="btn-orange" type="button">Auflösung zeigen</button>
+          <button id="skipBtn" class="btn-gray" type="button">Skippen</button>
+          <button id="nextBtn" class="btn-purple hidden" type="button">Weiter</button>
+          <button id="endBtn" class="btn-red hidden" type="button">Ende</button>
+        </div>
+
+        <div id="scoreResult" class="result"></div>
+
+        <div id="manualBox" class="manual-box">
+          <div class="manual-title">Punkte manuell vergeben</div>
+          <div id="awardGrid" class="award-grid"></div>
+          <div class="buttons">
+            <button id="manualNoPointsBtn" class="btn-gray" type="button">Kein Punkt</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="right">
+        <h2>Spielstand</h2>
+        <div id="playerList" class="player-list"></div>
+
+        <ul class="info-list">
+          <li>Einmal auf <b>Audio freischalten</b> klicken.</li>
+          <li>Danach über <b>Play</b> den aktuellen Song starten.</li>
+          <li>MP3-Dateien liegen lokal im Ordner <b>audio</b>.</li>
+          <li>Solo: Song = 2 Punkte, nur Artist = 1 Punkt.</li>
+          <li>Mehrspieler: erst Auflösung, dann 2 / 1 / 0 Punkte vergeben.</li>
+        </ul>
+
+        <div id="statusText" class="status">Status: Warte auf Spielstart.</div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="mediaEl" preload="auto"></audio>
+
+  <script>
+    const songs = [{"songTitle": "Let King Tonka Talk", "artist": "Yeat", "coverImage": "https://i.imgur.com/E74A2JD.png", "audioClip": "audio/song1.mp3"}, {"songTitle": "Bamba", "artist": "Luciano", "coverImage": "https://i.imgur.com/EwUdX7I.png", "audioClip": "audio/song2.mp3"}, {"songTitle": "Butcher", "artist": "Luciano", "coverImage": "https://i.imgur.com/GuKWd58.png", "audioClip": "audio/song3.mp3"}, {"songTitle": "WONDERFUL LIFE", "artist": "Luciano", "coverImage": "https://i.imgur.com/O6pE37K.png", "audioClip": "audio/song4.mp3"}, {"songTitle": "AKON", "artist": "Jazeek", "coverImage": "https://i.imgur.com/DTqqh5V.png", "audioClip": "audio/song5.mp3"}, {"songTitle": "Mary", "artist": "Jazeek", "coverImage": "https://i.imgur.com/V7Ls44J.png", "audioClip": "audio/song6.mp3"}, {"songTitle": "Trance", "artist": "Aymen", "coverImage": "https://i.imgur.com/0hkSCia.png", "audioClip": "audio/song7.mp3"}, {"songTitle": "Bahnhof", "artist": "Aymen", "coverImage": "https://i.imgur.com/LhCZra0.png", "audioClip": "audio/song8.mp3"}, {"songTitle": "Twerk", "artist": "Aymo", "coverImage": "https://i.imgur.com/wR6JHza.png", "audioClip": "audio/song9.mp3"}, {"songTitle": "CC&MO", "artist": "Amo", "coverImage": "https://i.imgur.com/LhCZra0.png", "audioClip": "audio/song10.mp3"}, {"songTitle": "Rammbock", "artist": "Amo", "coverImage": "https://i.imgur.com/LhCZra0.png", "audioClip": "audio/song11.mp3"}, {"songTitle": "BLOCKKIDS", "artist": "Thizzy", "coverImage": "https://i.imgur.com/I5EtUhC.png", "audioClip": "audio/song12.mp3"}, {"songTitle": "BRICKS", "artist": "Thizzy", "coverImage": "https://i.imgur.com/r6bsWh1.png", "audioClip": "audio/song13.mp3"}, {"songTitle": "OCEAN", "artist": "Ufo", "coverImage": "https://i.imgur.com/INEk88Q.png", "audioClip": "audio/song14.mp3"}, {"songTitle": "GET THE FUCK OUT", "artist": "Ufo", "coverImage": "https://i.imgur.com/M8y9U53.png", "audioClip": "audio/song15.mp3"}, {"songTitle": "Loser", "artist": "Apache", "coverImage": "https://i.imgur.com/EQPgdV5.png", "audioClip": "audio/song16.mp3"}, {"songTitle": "Roller", "artist": "Apache", "coverImage": "https://i.imgur.com/tQBGbOi.png", "audioClip": "audio/song17.mp3"}, {"songTitle": "Speed", "artist": "Gunna", "coverImage": "https://i.imgur.com/bSBnvnl.png", "audioClip": "audio/song18.mp3"}, {"songTitle": "Turks", "artist": "Gunna", "coverImage": "https://i.imgur.com/T5kIh73.png", "audioClip": "audio/song19.mp3"}, {"songTitle": "King tonka", "artist": "Yeat", "coverImage": "https://i.imgur.com/nNZxrvg.png", "audioClip": "audio/song20.mp3"}, {"songTitle": "IM YEAT", "artist": "Yeat", "coverImage": "https://i.imgur.com/hRmjj6y.png", "audioClip": "audio/song21.mp3"}, {"songTitle": "Otha Boy", "artist": "Lil Baby", "coverImage": "https://i.imgur.com/8tmRlUm.png", "audioClip": "audio/song22.mp3"}, {"songTitle": "Touchdown", "artist": "Lil Baby", "coverImage": "https://i.imgur.com/ScMoeOm.png", "audioClip": "audio/song23.mp3"}, {"songTitle": "ATM", "artist": "Don Toliver", "coverImage": "https://i.imgur.com/Y3ZejvB.png", "audioClip": "audio/song24.mp3"}, {"songTitle": "Lose My Mind", "artist": "Don Toliver", "coverImage": "https://i.imgur.com/vs39T7J.png", "audioClip": "audio/song25.mp3"}, {"songTitle": "SHYNE", "artist": "Travis Scott", "coverImage": "https://i.imgur.com/q0tLBAp.png", "audioClip": "audio/song26.mp3"}, {"songTitle": "4x4", "artist": "Travis Scott", "coverImage": "https://i.imgur.com/UINmMLk.png", "audioClip": "audio/song27.mp3"}, {"songTitle": "The Bell", "artist": "Yeat", "coverImage": "https://i.imgur.com/uZAMqsY.png", "audioClip": "audio/song28.mp3"}, {"songTitle": "Rauch", "artist": "Reezy", "coverImage": "https://i.imgur.com/gYi80uk.png", "audioClip": "audio/song29.mp3"}, {"songTitle": "TWINS", "artist": "Reezy", "coverImage": "https://i.imgur.com/wzQZO8B.png", "audioClip": "audio/song30.mp3"}, {"songTitle": "money", "artist": "Reezy", "coverImage": "https://i.imgur.com/K875NkX.png", "audioClip": "audio/song31.mp3"}, {"songTitle": "Pole Position", "artist": "Luciano", "coverImage": "https://i.imgur.com/iqNJLBd.png", "audioClip": "audio/song32.mp3"}, {"songTitle": "Baddies", "artist": "Luciano", "coverImage": "https://i.imgur.com/CCDF3uQ.png", "audioClip": "audio/song33.mp3"}, {"songTitle": "UZI", "artist": "Gzuz", "coverImage": "https://i.imgur.com/IQUkJyJ.png", "audioClip": "audio/song34.mp3"}, {"songTitle": "G Wagon", "artist": "Gzuz", "coverImage": "https://i.imgur.com/lMXVefk.png", "audioClip": "audio/song35.mp3"}, {"songTitle": "069", "artist": "Haftbefehl", "coverImage": "https://i.imgur.com/tj3CKAS.png", "audioClip": "audio/song36.mp3"}, {"songTitle": "HAYAT BAYAT", "artist": "Haftbefehl", "coverImage": "https://i.imgur.com/MrKpFjS.png", "audioClip": "audio/song37.mp3"}, {"songTitle": "MANNSCHAFT", "artist": "Haftbefehl", "coverImage": "https://i.imgur.com/61UXvOv.png", "audioClip": "audio/song38.mp3"}, {"songTitle": "Rockstar Lifestyle", "artist": "Ken Carson", "coverImage": "https://i.imgur.com/rrlOP9p.png", "audioClip": "audio/song39.mp3"}, {"songTitle": "FOMDJ", "artist": "Playboi Carti", "coverImage": "https://i.imgur.com/qyeJYHI.png", "audioClip": "audio/song40.mp3"}, {"songTitle": "TOXIC", "artist": "Playboi Carti", "coverImage": "https://i.imgur.com/qyeJYHI.png", "audioClip": "audio/song41.mp3"}, {"songTitle": "Cinderella", "artist": "Metro Boomin & Future", "coverImage": "https://i.imgur.com/ornCGGy.png", "audioClip": "audio/song42.mp3"}, {"songTitle": "Moneyfique", "artist": "Marlo", "coverImage": "https://i.imgur.com/s7eNDXy.png", "audioClip": "audio/song43.mp3"}, {"songTitle": "What You saying", "artist": "Lil Uzi Vert", "coverImage": "https://i.imgur.com/iQZOImV.png", "audioClip": "audio/song44.mp3"}, {"songTitle": "Neverever", "artist": "Destroy lonely", "coverImage": "https://i.imgur.com/oGJAF1h.png", "audioClip": "audio/song45.mp3"}, {"songTitle": "Paparazzi", "artist": "Pajel", "coverImage": "https://i.imgur.com/pEHX8Kj.png", "audioClip": "audio/song46.mp3"}, {"songTitle": "Shababs im Vip", "artist": "Pashanim", "coverImage": "https://i.imgur.com/SEnSyPe.png", "audioClip": "audio/song47.mp3"}, {"songTitle": "Mittelmeer", "artist": "Pashanim", "coverImage": "https://i.imgur.com/dGsen05.png", "audioClip": "audio/song48.mp3"}];
+
+// song2 als erstes für Test
+if (songs.length > 1) {
+  const second = songs.splice(1,1)[0];
+  songs.unshift(second);
+}
+
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+    // shuffle disabled for testing
+
+    let gameMode = "solo";
+    let players = [];
+    let currentIndex = 0;
+    let seconds = 0;
+    let timerInterval = null;
+    let gameStarted = false;
+    let currentResolved = false;
+    let clipLength = 15;
+    let playTimeout = null;
+    let countdownRunning = false;
+    let roundAwarded = false;
+    let mediaUnlocked = false;
+
+    const soloModeBtn = document.getElementById("soloModeBtn");
+    const multiModeBtn = document.getElementById("multiModeBtn");
+    const playerCountSelect = document.getElementById("playerCountSelect");
+    const clipLengthSelect = document.getElementById("clipLengthSelect");
+    const playerInputs = document.getElementById("playerInputs");
+    const startBtn = document.getElementById("startBtn");
+
+    const player1Input = document.getElementById("player1Input");
+    const player2Input = document.getElementById("player2Input");
+    const player3Input = document.getElementById("player3Input");
+    const player4Input = document.getElementById("player4Input");
+    const allPlayerInputs = [player1Input, player2Input, player3Input, player4Input];
+
+    const startOverlay = document.getElementById("startOverlay");
+    const endOverlay = document.getElementById("endOverlay");
+
+    const timeDisplay = document.getElementById("timeDisplay");
+    const countDisplay = document.getElementById("countDisplay");
+    const modeDisplay = document.getElementById("modeDisplay");
+    const clipDisplay = document.getElementById("clipDisplay");
+    const statusText = document.getElementById("statusText");
+
+    const coverImage = document.getElementById("coverImage");
+    const playingPlaceholder = document.getElementById("playingPlaceholder");
+    const coverFallback = document.getElementById("coverFallback");
+    const songInfo = document.getElementById("songInfo");
+    const songTitleEl = document.getElementById("songTitleEl");
+    const songArtistEl = document.getElementById("songArtistEl");
+    const countdown = document.getElementById("countdown");
+
+    const soloInputs = document.getElementById("soloInputs");
+    const songGuessInput = document.getElementById("songGuessInput");
+    const artistGuessInput = document.getElementById("artistGuessInput");
+
+    const primeBtn = document.getElementById("primeBtn");
+    const playBtn = document.getElementById("playBtn");
+    const replayBtn = document.getElementById("replayBtn");
+    const revealBtn = document.getElementById("revealBtn");
+    const skipBtn = document.getElementById("skipBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const endBtn = document.getElementById("endBtn");
+
+    const scoreResult = document.getElementById("scoreResult");
+    const manualBox = document.getElementById("manualBox");
+    const awardGrid = document.getElementById("awardGrid");
+    const manualNoPointsBtn = document.getElementById("manualNoPointsBtn");
+
+    const playerList = document.getElementById("playerList");
+
+    const finalSongsPlayed = document.getElementById("finalSongsPlayed");
+    const finalTime = document.getElementById("finalTime");
+    const finalModeLabel = document.getElementById("finalModeLabel");
+    const finalModeValue = document.getElementById("finalModeValue");
+    const finalScoreboard = document.getElementById("finalScoreboard");
+    const winnerText = document.getElementById("winnerText");
+
+    const mediaEl = document.getElementById("mediaEl");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const volumeValue = document.getElementById("volumeValue");
+
+    function updatePlayerInputVisibility() {
+      const count = gameMode === "solo" ? 1 : Number(playerCountSelect.value);
+      allPlayerInputs.forEach((input, index) => {
+        input.style.display = (gameMode === "solo" || index >= count) ? "none" : "";
+      });
+    }
+
+    function setMode(mode) {
+      gameMode = mode;
+      if (mode === "solo") {
+        soloModeBtn.classList.add("active");
+        multiModeBtn.classList.remove("active");
+        playerCountSelect.value = "1";
+        playerInputs.classList.add("hidden");
+      } else {
+        multiModeBtn.classList.add("active");
+        soloModeBtn.classList.remove("active");
+        playerInputs.classList.remove("hidden");
+      }
+      updateModeUI();
+      updatePlayerInputVisibility();
+    }
+
+    function updateModeUI() {
+      if (gameMode === "solo") {
+        modeDisplay.textContent = "Solo";
+        soloInputs.classList.remove("hidden");
+      } else {
+        modeDisplay.textContent = "Team";
+        soloInputs.classList.add("hidden");
+      }
+    }
+
+    function formatTime(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+      const secs = (totalSeconds % 60).toString().padStart(2, "0");
+      return `${minutes}:${secs}`;
+    }
+
+    function normalizeText(value) {
+      return value.trim().toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9äöüß\s]/gi," ").replace(/\s+/g," ");
+    }
+
+    function compactText(value) {
+      return normalizeText(value).replace(/\s+/g,"");
+    }
+
+    function isMatch(input, target) {
+      const ni = normalizeText(input);
+      const nt = normalizeText(target);
+      const ci = compactText(input);
+      const ct = compactText(target);
+      if (!ni) return false;
+      return ni === nt || ni.includes(nt) || nt.includes(ni) || ci === ct || ci.includes(ct) || ct.includes(ci);
+    }
+
+    function stopMedia(reset=true) {
+      mediaEl.pause();
+      if (reset) {
+        try { mediaEl.currentTime = 0; } catch(e) {}
+      }
+      if (playTimeout) {
+        clearTimeout(playTimeout);
+        playTimeout = null;
+      }
+    }
+
+    function applyVolume() {
+      mediaEl.volume = Number(volumeSlider.value) / 100;
+      mediaEl.muted = false;
+    }
+
+    async function unlockMedia() {
+      try {
+        mediaEl.muted = true;
+        mediaEl.src = songs[currentIndex].audioClip;
+        mediaEl.load();
+        await mediaEl.play();
+        mediaEl.pause();
+        try { mediaEl.currentTime = 0; } catch(e) {}
+        mediaEl.muted = false;
+        applyVolume();
+        mediaUnlocked = true;
+        statusText.textContent = "Status: Audio freigeschaltet. Jetzt auf Play klicken.";
+      } catch (e) {
+        mediaUnlocked = false;
+        statusText.textContent = "Status: Audio-Freischaltung fehlgeschlagen. Bitte nochmal klicken.";
+      }
+    }
+
+    function showPlayingState() {
+      playingPlaceholder.classList.remove("hidden");
+      coverFallback.classList.add("hidden");
+      coverImage.classList.remove("show");
+      songInfo.classList.remove("show");
+    }
+
+    function showRevealState() {
+      playingPlaceholder.classList.add("hidden");
+      if (coverImage.dataset.failed === "1") {
+        coverFallback.classList.remove("hidden");
+        coverImage.classList.remove("show");
+      } else {
+        coverFallback.classList.add("hidden");
+        coverImage.classList.add("show");
+      }
+      songInfo.classList.add("show");
+    }
+
+    async function playCurrentClip() {
+      if (!gameStarted) return;
+      if (!mediaUnlocked) {
+        statusText.textContent = "Status: Erst auf 'Audio freischalten' klicken.";
+        return;
+      }
+
+      const current = songs[currentIndex];
+      stopMedia();
+      mediaEl.src = current.audioClip;
+      mediaEl.load();
+      applyVolume();
+      showPlayingState();
+
+      try {
+        await mediaEl.play();
+        statusText.textContent = `Status: Clip läuft für ${clipLength} Sekunden.`;
+        playTimeout = setTimeout(() => {
+          mediaEl.pause();
+          statusText.textContent = "Status: Clip beendet. Jetzt raten oder auflösen.";
+        }, clipLength * 1000);
+      } catch (e) {
+        statusText.textContent = "Status: Datei konnte nicht gestartet werden. Prüfe, ob die MP3 im audio-Ordner liegt.";
+      }
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        seconds++;
+        timeDisplay.textContent = formatTime(seconds);
+      }, 1000);
+    }
+
+    function updatePlayerList() {
+      playerList.innerHTML = "";
+      players.forEach((player, index) => {
+        const card = document.createElement("div");
+        card.className = "player-card";
+        card.innerHTML = `
+          <div>
+            <div class="player-name">${player.name}</div>
+            <div class="player-points">${player.points}</div>
+          </div>
+          <div class="adjust"><button class="btn-gray" data-player="${index}" data-action="minus">-</button></div>
+          <div class="adjust"><button class="btn-green" data-player="${index}" data-action="plus">+</button></div>
+        `;
+        playerList.appendChild(card);
+      });
+
+      playerList.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.dataset.player);
+          const action = btn.dataset.action;
+          if (action === "plus") players[idx].points++;
+          if (action === "minus") players[idx].points--;
+          updatePlayerList();
+        });
+      });
+    }
+
+    function renderAwardGrid() {
+      awardGrid.innerHTML = "";
+      players.forEach((player, index) => {
+        const row = document.createElement("div");
+        row.className = "award-row";
+        row.innerHTML = `
+          <div class="award-name">${player.name}</div>
+          <button class="btn-green" data-player="${index}" data-points="2">+2</button>
+          <button class="btn-orange" data-player="${index}" data-points="1">+1</button>
+          <button class="btn-gray" data-player="${index}" data-points="0">0</button>
+        `;
+        awardGrid.appendChild(row);
+      });
+
+      awardGrid.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (roundAwarded) return;
+          const idx = Number(btn.dataset.player);
+          const pts = Number(btn.dataset.points);
+          players[idx].points += pts;
+          updatePlayerList();
+          roundAwarded = true;
+          manualBox.classList.remove("active");
+          scoreResult.className = "result";
+          scoreResult.textContent = pts === 2 ? `${players[idx].name} bekommt 2 Punkte` : pts === 1 ? `${players[idx].name} bekommt 1 Punkt` : `Kein Punkt für ${players[idx].name}`;
+          showNextOrEnd();
+        });
+      });
+    }
+
+    function loadSong(index) {
+      const current = songs[index];
+      stopMedia();
+      currentResolved = false;
+      roundAwarded = false;
+      showPlayingState();
+      coverImage.dataset.failed = "0";
+      coverImage.src = current.coverImage;
+      songTitleEl.textContent = current.songTitle;
+      songArtistEl.textContent = current.artist;
+
+      songGuessInput.value = "";
+      artistGuessInput.value = "";
+      songGuessInput.disabled = false;
+      artistGuessInput.disabled = false;
+
+      scoreResult.textContent = "";
+      scoreResult.className = "result";
+      manualBox.classList.remove("active");
+      nextBtn.classList.add("hidden");
+      endBtn.classList.add("hidden");
+      countdown.textContent = "";
+
+      countDisplay.textContent = `${index + 1} / ${songs.length}`;
+      statusText.textContent = mediaUnlocked ? "Status: Auf Play klicken, um den Clip zu starten." : "Status: Erst Audio freischalten.";
+    }
+
+    function revealCurrent(skipMode=false) {
+      if (!gameStarted || currentResolved) return;
+
+      stopMedia(false);
+      currentResolved = true;
+      showRevealState();
+      songGuessInput.disabled = true;
+      artistGuessInput.disabled = true;
+
+      const current = songs[currentIndex];
+
+      if (skipMode) {
+        scoreResult.className = "result bad";
+        scoreResult.textContent = "Song wurde geskipped";
+        manualBox.classList.remove("active");
+        showNextOrEnd();
+        return;
+      }
+
+      if (gameMode === "solo") {
+        const songOk = isMatch(songGuessInput.value, current.songTitle);
+        const artistOk = isMatch(artistGuessInput.value, current.artist);
+
+        let points = 0;
+        if (songOk) points = 2;
+        else if (artistOk) points = 1;
+
+        players[0].points += points;
+        updatePlayerList();
+
+        if (points === 2) {
+          scoreResult.className = "result good";
+          scoreResult.textContent = "2 Punkte – Song richtig";
+        } else if (points === 1) {
+          scoreResult.className = "result mid";
+          scoreResult.textContent = "1 Punkt – Artist richtig";
+        } else {
+          scoreResult.className = "result bad";
+          scoreResult.textContent = "0 Punkte";
+        }
+        showNextOrEnd();
+      } else {
+        scoreResult.className = "result";
+        scoreResult.textContent = "Auflösung angezeigt – jetzt Punkte vergeben";
+        manualBox.classList.add("active");
+        renderAwardGrid();
+      }
+
+      statusText.textContent = "Status: Auflösung angezeigt.";
+    }
+
+    function showNextOrEnd() {
+      if (currentIndex < songs.length - 1) nextBtn.classList.remove("hidden");
+      else endBtn.classList.remove("hidden");
+    }
+
+    async function nextSongWithCountdown() {
+      if (countdownRunning || currentIndex >= songs.length - 1) return;
+      countdownRunning = true;
+      nextBtn.disabled = true;
+
+      for (const n of [3,2,1]) {
+        countdown.textContent = n;
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+
+      countdown.textContent = "";
+      currentIndex++;
+      loadSong(currentIndex);
+      countdownRunning = false;
+      nextBtn.disabled = false;
+      await playCurrentClip();
+    }
+
+    function openResults() {
+      stopMedia();
+      if (timerInterval) clearInterval(timerInterval);
+
+      finalSongsPlayed.textContent = songs.length;
+      finalTime.textContent = formatTime(seconds);
+      finalScoreboard.innerHTML = "";
+      winnerText.classList.add("hidden");
+      winnerText.textContent = "";
+
+      if (gameMode === "solo") {
+        finalModeLabel.textContent = "Punkte";
+        finalModeValue.textContent = players[0].points;
+      } else {
+        finalModeLabel.textContent = "Spieler";
+        finalModeValue.textContent = players.length;
+      }
+
+      players.forEach((player) => {
+        const card = document.createElement("div");
+        card.className = "player-card";
+        card.innerHTML = `<div><div class="player-name">${player.name}</div><div class="player-points">${player.points}</div></div><div></div><div></div>`;
+        finalScoreboard.appendChild(card);
+      });
+
+      if (gameMode !== "solo") {
+        const sorted = [...players].sort((a,b) => b.points - a.points);
+        if (sorted.length > 1 && sorted[0].points === sorted[1].points) winnerText.textContent = "Unentschieden";
+        else winnerText.textContent = `Gewinner: ${sorted[0].name}`;
+        winnerText.classList.remove("hidden");
+      }
+
+      endOverlay.classList.remove("hidden");
+    }
+
+    function initPlayers() {
+      if (gameMode === "solo") {
+        players = [{ name: "Solo", points: 0 }];
+      } else {
+        const count = Number(playerCountSelect.value);
+        const names = [
+          player1Input.value.trim() || "Player 1",
+          player2Input.value.trim() || "Player 2",
+          player3Input.value.trim() || "Player 3",
+          player4Input.value.trim() || "Player 4"
+        ];
+        players = names.slice(0, count).map(name => ({ name, points: 0 }));
+      }
+      updatePlayerList();
+    }
+
+    soloModeBtn.addEventListener("click", () => setMode("solo"));
+    multiModeBtn.addEventListener("click", () => setMode("multi"));
+    playerCountSelect.addEventListener("change", updatePlayerInputVisibility);
+
+    startBtn.addEventListener("click", () => {
+      clipLength = Number(clipLengthSelect.value);
+      clipDisplay.textContent = `${clipLength}s`;
+      initPlayers();
+      updateModeUI();
+      updatePlayerInputVisibility();
+      startOverlay.classList.add("hidden");
+      gameStarted = true;
+      startTimer();
+      loadSong(currentIndex);
+      statusText.textContent = "Status: Erst Audio freischalten, dann Play.";
+    });
+
+    primeBtn.addEventListener("click", unlockMedia);
+    playBtn.addEventListener("click", playCurrentClip);
+    replayBtn.addEventListener("click", playCurrentClip);
+    revealBtn.addEventListener("click", () => revealCurrent(false));
+    skipBtn.addEventListener("click", () => revealCurrent(true));
+    nextBtn.addEventListener("click", nextSongWithCountdown);
+    endBtn.addEventListener("click", openResults);
+
+    manualNoPointsBtn.addEventListener("click", () => {
+      if (roundAwarded) return;
+      roundAwarded = true;
+      manualBox.classList.remove("active");
+      scoreResult.className = "result bad";
+      scoreResult.textContent = "Kein Punkt vergeben";
+      showNextOrEnd();
+    });
+
+    [songGuessInput, artistGuessInput].forEach((input) => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !currentResolved) revealCurrent(false);
+      });
+    });
+
+    volumeSlider.addEventListener("input", () => {
+      applyVolume();
+      volumeValue.textContent = `${volumeSlider.value}%`;
+    });
+
+    coverImage.addEventListener("error", () => {
+      coverImage.dataset.failed = "1";
+    });
+    coverImage.addEventListener("load", () => {
+      coverImage.dataset.failed = "0";
+    });
+
+    mediaEl.addEventListener("waiting", () => {
+      if (gameStarted && !currentResolved) statusText.textContent = "Status: Song wird geladen...";
+    });
+    mediaEl.addEventListener("playing", () => {
+      if (gameStarted && !currentResolved) statusText.textContent = `Status: Clip läuft für ${clipLength} Sekunden.`;
+    });
+    mediaEl.addEventListener("error", () => {
+      statusText.textContent = "Status: Datei konnte nicht geladen werden. Prüfe den audio-Ordner.";
+    });
+
+    applyVolume();
+    volumeValue.textContent = `${volumeSlider.value}%`;
+    updateModeUI();
+    updatePlayerInputVisibility();
+  </script>
+</body>
+</html>

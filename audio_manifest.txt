@@ -1,0 +1,52 @@
+GuessTheSong Audio-Dateien
+
+Lege diese MP3-Dateien in den Ordner /audio:
+
+song1.mp3  ->  Yeat - Let King Tonka Talk
+song2.mp3  ->  Luciano - Bamba
+song3.mp3  ->  Luciano - Butcher
+song4.mp3  ->  Luciano - WONDERFUL LIFE
+song5.mp3  ->  Jazeek - AKON
+song6.mp3  ->  Jazeek - Mary
+song7.mp3  ->  Aymen - Trance
+song8.mp3  ->  Aymen - Bahnhof
+song9.mp3  ->  Aymo - Twerk
+song10.mp3  ->  Amo - CC&MO
+song11.mp3  ->  Amo - Rammbock
+song12.mp3  ->  Thizzy - BLOCKKIDS
+song13.mp3  ->  Thizzy - BRICKS
+song14.mp3  ->  Ufo - OCEAN
+song15.mp3  ->  Ufo - GET THE FUCK OUT
+song16.mp3  ->  Apache - Loser
+song17.mp3  ->  Apache - Roller
+song18.mp3  ->  Gunna - Speed
+song19.mp3  ->  Gunna - Turks
+song20.mp3  ->  Yeat - King tonka
+song21.mp3  ->  Yeat - IM YEAT
+song22.mp3  ->  Lil Baby - Otha Boy
+song23.mp3  ->  Lil Baby - Touchdown
+song24.mp3  ->  Don Toliver - ATM
+song25.mp3  ->  Don Toliver - Lose My Mind
+song26.mp3  ->  Travis Scott - SHYNE
+song27.mp3  ->  Travis Scott - 4x4
+song28.mp3  ->  Yeat - The Bell
+song29.mp3  ->  Reezy - Rauch
+song30.mp3  ->  Reezy - TWINS
+song31.mp3  ->  Reezy - money
+song32.mp3  ->  Luciano - Pole Position
+song33.mp3  ->  Luciano - Baddies
+song34.mp3  ->  Gzuz - UZI
+song35.mp3  ->  Gzuz - G Wagon
+song36.mp3  ->  Haftbefehl - 069
+song37.mp3  ->  Haftbefehl - HAYAT BAYAT
+song38.mp3  ->  Haftbefehl - MANNSCHAFT
+song39.mp3  ->  Ken Carson - Rockstar Lifestyle
+song40.mp3  ->  Playboi Carti - FOMDJ
+song41.mp3  ->  Playboi Carti - TOXIC
+song42.mp3  ->  Metro Boomin & Future - Cinderella
+song43.mp3  ->  Marlo - Moneyfique
+song44.mp3  ->  Lil Uzi Vert - What You saying
+song45.mp3  ->  Destroy lonely - Neverever
+song46.mp3  ->  Pajel - Paparazzi
+song47.mp3  ->  Pashanim - Shababs im Vip
+song48.mp3  ->  Pashanim - Mittelmeer
